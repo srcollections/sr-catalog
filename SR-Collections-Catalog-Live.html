@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SR COLLECTIONS AND DEEP FOOTWEAR - Live Catalog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root{
+    --navy:#0b1324; --navy-2:#101b34; --green:#12b981; --green-dark:#0d9668;
+    --text-light:#e7ecf5; --text-dim:#9aa7c2; --card-bg:#ffffff; --bg:#f4f6fb;
+    --border:#e4e8f1; --danger:#e5484d;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Inter',sans-serif; background:var(--bg); color:#1a2333; overflow-x:hidden;}
+  h1,h2,h3,h4{font-family:'Poppins',sans-serif;}
+  .container{max-width:1200px; margin:0 auto; padding:0 24px;}
+  a{text-decoration:none; color:inherit;}
+  button{font-family:inherit; cursor:pointer; border:none;}
+  .hidden{display:none !important;}
+
+  .top-bar{background:var(--navy-2); color:var(--text-dim); font-size:13px; padding:8px 0;}
+  .top-bar-content{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;}
+  .shop-status-badge{padding:3px 10px; border-radius:20px; font-weight:600; font-size:12px; background:rgba(18,185,129,.15); color:var(--green);}
+  .top-call{color:var(--green); font-weight:600;}
+
+  .main-header{background:var(--navy); padding:16px 0; position:sticky; top:0; z-index:50; box-shadow:0 2px 12px rgba(0,0,0,.2);}
+  .header-container{display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;}
+  .shop-logo{color:#fff; font-size:20px; font-weight:800; letter-spacing:.3px;}
+  .shop-tagline{color:var(--text-dim); font-size:12px; margin-top:2px;}
+  .search-bar-container{flex:1; max-width:420px; position:relative; min-width:200px;}
+  .search-bar-container input{width:100%; padding:10px 14px 10px 38px; border-radius:24px; border:none; background:#1a2540; color:#fff; font-size:14px;}
+  .search-bar-container input::placeholder{color:#7f8bab;}
+  .search-icon{position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#7f8bab; font-size:13px;}
+  .header-actions{display:flex; gap:10px;}
+  .cart-btn, .admin-btn{background:#1a2540; color:#fff; padding:10px 16px; border-radius:24px; font-weight:600; font-size:13px; display:flex; align-items:center; gap:6px; position:relative;}
+  .cart-btn{background:var(--green);}
+  .cart-badge{background:#fff; color:var(--green-dark); border-radius:50%; width:20px; height:20px; font-size:11px; display:flex; align-items:center; justify-content:center; font-weight:800;}
+
+  .hero-section{background:linear-gradient(135deg,var(--navy) 0%,#182548 100%); padding:56px 0;}
+  .hero-container{display:flex; align-items:center; gap:40px; flex-wrap:wrap;}
+  .hero-content{flex:1; min-width:280px;}
+  .hero-badge{display:inline-flex; align-items:center; gap:6px; background:rgba(18,185,129,.15); color:var(--green); padding:5px 14px; border-radius:20px; font-size:12px; font-weight:700; margin-bottom:14px;}
+  .live-dot{width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%{opacity:1;}50%{opacity:.3;}100%{opacity:1;}}
+  .hero-title{color:#fff; font-size:34px; line-height:1.2; margin-bottom:14px;}
+  .hero-desc{color:var(--text-dim); font-size:15px; line-height:1.6; margin-bottom:22px; max-width:520px;}
+  .hero-actions{display:flex; gap:12px; flex-wrap:wrap;}
+  .btn{padding:12px 22px; border-radius:10px; font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:8px;}
+  .btn-primary{background:var(--green); color:#fff;}
+  .btn-primary:hover{background:var(--green-dark);}
+  .btn-secondary{background:#1a2540; color:#fff;}
+  .btn-outline{background:transparent; border:1.5px solid var(--border); color:#1a2333;}
+  .hero-qr-box{background:#fff; border-radius:16px; padding:20px; text-align:center; min-width:180px;}
+  .hero-qr-box #hero-qr{margin:0 auto 8px;}
+  .hero-qr-box p{font-size:12px; color:#555; font-weight:600;}
+
+  .info-section{padding:28px 0;}
+  .info-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px;}
+  .info-card{background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px; display:flex; gap:14px; align-items:flex-start;}
+  .info-icon{background:rgba(18,185,129,.1); color:var(--green); width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;}
+  .info-details h3{font-size:14px; margin-bottom:4px;}
+  .info-details p{font-size:13px; color:#5a6478;}
+
+  .catalog-section{padding:36px 0 60px;}
+  .catalog-heading{text-align:center; margin-bottom:26px;}
+  .catalog-heading h2{font-size:28px; margin-bottom:8px;}
+  .catalog-heading p{color:#6b7488; font-size:14px;}
+  .category-tabs{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:28px;}
+  .cat-tab{padding:10px 18px; border-radius:24px; background:#fff; border:1.5px solid var(--border); font-weight:600; font-size:13px; color:#3a4359;}
+  .cat-tab.active{background:var(--green); color:#fff; border-color:var(--green);}
+  .product-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:20px;}
+  .product-card{background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; transition:transform .15s, box-shadow .15s;}
+  .product-card:hover{transform:translateY(-3px); box-shadow:0 10px 24px rgba(20,30,60,.08);}
+  .product-img-box{position:relative; background:linear-gradient(135deg,#eef1f8,#e3e8f4); height:160px; display:flex; align-items:center; justify-content:center; font-size:56px;}
+  .product-img-box img{width:100%; height:100%; object-fit:cover;}
+  .unit-badge{position:absolute; top:10px; left:10px; background:#ff9f1c; color:#fff; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px;}
+  .oos-badge{position:absolute; inset:0; background:rgba(20,20,20,.55); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;}
+  .product-body{padding:14px 16px 16px; display:flex; flex-direction:column; gap:6px; flex:1;}
+  .product-cat-tag{font-size:10.5px; color:var(--green-dark); font-weight:700; text-transform:uppercase; letter-spacing:.4px;}
+  .product-name{font-size:14.5px; font-weight:700; line-height:1.3;}
+  .product-desc{font-size:12.5px; color:#7c8496; line-height:1.4; flex:1;}
+  .product-footer{display:flex; justify-content:space-between; align-items:center; margin-top:6px;}
+  .product-price{font-size:17px; font-weight:800; color:#1a2333;}
+  .product-price span{font-size:11px; color:#8b93a6; font-weight:500; display:block;}
+  .add-btn{background:var(--green); color:#fff; width:36px; height:36px; border-radius:50%; font-size:16px; display:flex; align-items:center; justify-content:center;}
+  .add-btn:disabled{background:#c9cfdb; cursor:not-allowed;}
+  .empty-state{grid-column:1/-1; text-align:center; padding:50px 20px; color:#8b93a6;}
+
+  .cart-overlay{position:fixed; inset:0; background:rgba(10,15,30,.5); z-index:100; display:flex; justify-content:flex-end;}
+  .cart-drawer{background:#fff; width:100%; max-width:400px; height:100%; display:flex; flex-direction:column; animation:slideIn .25s ease;}
+  @keyframes slideIn{from{transform:translateX(100%);} to{transform:translateX(0);}}
+  .cart-header{padding:18px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
+  .cart-items{flex:1; overflow-y:auto; padding:12px 20px;}
+  .cart-item{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border);}
+  .cart-item-emoji{width:52px; height:52px; border-radius:10px; background:#f0f2f8; display:flex; align-items:center; justify-content:center; font-size:24px; overflow:hidden; flex-shrink:0;}
+  .cart-item-emoji img{width:100%; height:100%; object-fit:cover;}
+  .cart-item-info{flex:1;}
+  .cart-item-info h4{font-size:13.5px; margin-bottom:4px;}
+  .qty-control{display:flex; align-items:center; gap:10px; margin-top:6px;}
+  .qty-control button{width:24px; height:24px; border-radius:6px; background:#f0f2f8; font-weight:700;}
+  .remove-item-btn{color:var(--danger); font-size:12px; font-weight:600;}
+  .cart-footer{padding:16px 20px; border-top:1px solid var(--border);}
+  .cart-summary-row{display:flex; justify-content:space-between; font-size:13px; color:#5a6478; margin-bottom:6px;}
+  .cart-summary-row.total{font-size:16px; font-weight:800; color:#1a2333; margin-top:8px;}
+  .close-btn{background:#f0f2f8; width:32px; height:32px; border-radius:50%; font-size:14px;}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(10,15,30,.55); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px;}
+  .modal-box{background:#fff; border-radius:18px; width:100%; max-width:420px; max-height:90vh; overflow-y:auto;}
+  .modal-box.wide{max-width:720px;}
+  .modal-header{padding:20px 22px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
+  .modal-header h3{font-size:17px;}
+  .modal-body{padding:22px;}
+  .form-group{margin-bottom:16px;}
+  .form-group label{display:block; font-size:13px; font-weight:600; margin-bottom:6px; color:#3a4359;}
+  .form-group input, .form-group select, .form-group textarea{width:100%; padding:11px 13px; border:1.5px solid var(--border); border-radius:9px; font-size:14px; font-family:inherit;}
+  .form-row{display:flex; gap:12px;}
+  .form-row .form-group{flex:1;}
+  .error-text{color:var(--danger); font-size:12.5px; margin-top:6px;}
+  .btn-block{width:100%; justify-content:center;}
+  .img-preview{width:100%; height:140px; border-radius:10px; background:#f0f2f8; display:flex; align-items:center; justify-content:center; font-size:44px; overflow:hidden; margin-bottom:10px;}
+  .img-preview img{width:100%; height:100%; object-fit:cover;}
+
+  .admin-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; border-bottom:1px solid var(--border); padding-bottom:12px;}
+  .admin-tab-btn{padding:8px 14px; border-radius:8px; font-size:12.5px; font-weight:700; background:#f0f2f8; color:#4a5470;}
+  .admin-tab-btn.active{background:var(--navy); color:#fff;}
+  .admin-product-row{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap;}
+  .admin-product-thumb{width:40px; height:40px; border-radius:8px; background:#f0f2f8; display:flex; align-items:center; justify-content:center; font-size:20px; overflow:hidden; flex-shrink:0;}
+  .admin-product-thumb img{width:100%; height:100%; object-fit:cover;}
+  .admin-product-name-info{flex:1; min-width:140px;}
+  .admin-product-title{font-size:13px; font-weight:700; display:block;}
+  .admin-product-cat-tag{font-size:11px; color:#8b93a6;}
+  .admin-rate-input{width:90px; padding:7px 9px; border:1.5px solid var(--border); border-radius:7px; font-size:13px;}
+  .toggle-switch{position:relative; width:40px; height:22px;}
+  .toggle-switch input{opacity:0; width:0; height:0;}
+  .toggle-slider{position:absolute; inset:0; background:#d5dae5; border-radius:20px; cursor:pointer; transition:.2s;}
+  .toggle-slider:before{content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;}
+  .toggle-switch input:checked + .toggle-slider{background:var(--green);}
+  .toggle-switch input:checked + .toggle-slider:before{transform:translateX(18px);}
+  .icon-btn{background:none; color:#8b93a6; font-size:15px; padding:6px;}
+  .icon-btn.danger{color:var(--danger);}
+  .admin-help-text{font-size:12.5px; color:#8b93a6; margin-bottom:14px; background:#f7f9fc; padding:10px 14px; border-radius:8px;}
+  #qr-code-box{display:flex; flex-direction:column; align-items:center; gap:12px; padding:10px 0;}
+  #qr-canvas-holder{padding:16px; background:#fff; border:1.5px solid var(--border); border-radius:14px;}
+  .link-box{display:flex; gap:8px; width:100%;}
+  .link-box input{flex:1; padding:10px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:12.5px; background:#f7f9fc;}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a2333; color:#fff; padding:12px 22px; border-radius:30px; font-size:13.5px; font-weight:600; z-index:400; box-shadow:0 8px 20px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:.25s;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+  .config-banner{background:#fff3cd; color:#664d03; padding:14px 20px; font-size:13.5px; text-align:center; font-weight:600;}
+
+  .site-footer{background:var(--navy); color:var(--text-dim); padding:34px 0 18px; margin-top:20px;}
+  .footer-grid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:20px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,.08);}
+  .footer-grid h3{color:#fff; font-size:16px; margin-bottom:8px;}
+  .footer-grid p{font-size:13px; max-width:420px; line-height:1.6;}
+  .footer-links a{display:block; font-size:13px; margin-bottom:8px; color:var(--text-dim);}
+  .footer-bottom{display:flex; justify-content:space-between; padding-top:16px; font-size:12px; flex-wrap:wrap; gap:8px;}
+  .admin-link-btn{background:none; color:var(--text-dim); font-size:12px; text-decoration:underline;}
+
+  @media(max-width:640px){
+    .hero-title{font-size:26px;}
+    .header-container{flex-direction:column; align-items:stretch;}
+    .search-bar-container{max-width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================================================================
+     ⚠️ SETUP: Paste your Supabase Project URL + anon public key below.
+     Get these from Supabase Dashboard → Settings → API
+     =================================================================== -->
+<script>
+  const SUPABASE_URL = 'PASTE_YOUR_SUPABASE_URL_HERE';
+  const SUPABASE_ANON_KEY = 'PASTE_YOUR_SUPABASE_ANON_KEY_HERE';
+</script>
+
+<div class="config-banner hidden" id="config-banner">
+  ⚠️ Setup incomplete: is file me SUPABASE_URL aur SUPABASE_ANON_KEY dalna baaki hai (top of file, script tag me).
+</div>
+
+<div class="top-bar">
+  <div class="container top-bar-content">
+    <span class="shop-status-badge" id="status-badge">● Live</span>
+    <span id="top-delivery-promo">Free delivery on orders above ₹1000!</span>
+    <a class="top-call" id="top-call-link" href="#">📞 Call Shop</a>
+  </div>
+</div>
+
+<header class="main-header">
+  <div class="container header-container">
+    <div class="logo-area">
+      <h1 class="shop-logo" id="shop-name">SR COLLECTIONS AND DEEP FOOTWEAR</h1>
+      <p class="shop-tagline" id="shop-tagline">Sleek Apparel & Premium Footwear for Everyone!</p>
+    </div>
+    <div class="search-bar-container">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Search shoes, shirts, jeans, sarees...">
+    </div>
+    <div class="header-actions">
+      <button class="admin-btn" id="admin-open-btn">🔒 Admin</button>
+      <button class="cart-btn" id="cart-toggle">🛒 <span class="cart-badge" id="cart-badge-count">0</span> Cart</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero-section">
+  <div class="container hero-container">
+    <div class="hero-content">
+      <span class="hero-badge"><span class="live-dot"></span> LIVE CATALOG</span>
+      <h2 class="hero-title">Scan. Browse. Order on WhatsApp.</h2>
+      <p class="hero-desc">Customer is link ya QR code ko scan karke live rates aur photos dekh sakta hai. Cart me items select karein aur seedha WhatsApp par order bhejein.</p>
+      <div class="hero-actions">
+        <a href="#catalog-section" class="btn btn-primary">🛍️ Browse Catalog</a>
+        <a href="#" id="hero-whatsapp-link" class="btn btn-secondary">💬 Chat on WhatsApp</a>
+      </div>
+    </div>
+    <div class="hero-qr-box">
+      <div id="hero-qr"></div>
+      <p>Scan to view live catalog</p>
+    </div>
+  </div>
+</section>
+
+<section class="info-section">
+  <div class="container">
+    <div class="info-grid">
+      <div class="info-card"><div class="info-icon">📍</div><div class="info-details"><h3>Shop Address</h3><p id="shop-address"></p></div></div>
+      <div class="info-card"><div class="info-icon">🕒</div><div class="info-details"><h3>Opening Hours</h3><p id="shop-hours"></p></div></div>
+      <div class="info-card"><div class="info-icon">🚚</div><div class="info-details"><h3>Delivery Details</h3><p id="shop-delivery-charge"></p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="catalog-section" id="catalog-section">
+  <div class="container">
+    <div class="catalog-heading">
+      <h2>Hamare Products Aur Rates</h2>
+      <p>Sunder kapde aur mazboot footwear ka behtareen collection</p>
+    </div>
+    <div class="category-tabs" id="category-tabs"></div>
+    <div class="product-grid" id="product-grid"><div class="empty-state">Loading products…</div></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h3 id="footer-shop-name">SR COLLECTIONS AND DEEP FOOTWEAR</h3>
+        <p>Trending clothes, ladies suits, designer footwear, shoes, chappals aur daily wear slippers ka complete collection. Best price aur tezz service ke sath.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#catalog-section">Collections Catalog</a>
+        <a href="#" id="footer-whatsapp-link">Chat on WhatsApp</a>
+        <button class="admin-link-btn" id="admin-open-btn-2">🔒 Admin Login</button>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 SR COLLECTIONS & DEEP FOOTWEAR. All Rights Reserved.</span>
+      <span>100% Safe & Direct Ordering</span>
+    </div>
+  </div>
+</footer>
+
+<div class="cart-overlay hidden" id="cart-overlay">
+  <div class="cart-drawer">
+    <div class="cart-header"><h3>Your Cart</h3><button class="close-btn" id="cart-close">✕</button></div>
+    <div class="cart-items" id="cart-items"></div>
+    <div class="cart-footer">
+      <div class="cart-summary-row"><span>Subtotal</span><span id="cart-subtotal">₹0</span></div>
+      <div class="cart-summary-row"><span>Delivery</span><span id="cart-delivery">₹0</span></div>
+      <div class="cart-summary-row total"><span>Total</span><span id="cart-total">₹0</span></div>
+      <button class="btn btn-primary btn-block" id="checkout-whatsapp-btn" style="margin-top:12px;">💬 Order via WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="admin-login-overlay">
+  <div class="modal-box">
+    <div class="modal-header"><h3>Admin Login</h3><button class="close-btn" id="admin-login-close">✕</button></div>
+    <div class="modal-body">
+      <p class="admin-help-text">Enter shop password to add/edit products, upload photos, or view the QR code.</p>
+      <div class="form-group">
+        <label>Admin Password (पासवर्ड)</label>
+        <input type="password" id="admin-password" placeholder="Enter password">
+        <p class="error-text hidden" id="login-error-msg">❌ Invalid password, please try again.</p>
+      </div>
+      <button class="btn btn-primary btn-block" id="admin-login-submit">Login & Open Manager</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="admin-dashboard-overlay">
+  <div class="modal-box wide">
+    <div class="modal-header"><h3>Shop Manager</h3><button class="close-btn" id="admin-dashboard-close">✕</button></div>
+    <div class="modal-body">
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" data-tab="manage-products">Manage Products</button>
+        <button class="admin-tab-btn" data-tab="add-product">Add Product</button>
+        <button class="admin-tab-btn" data-tab="shop-settings">Shop Settings</button>
+        <button class="admin-tab-btn" data-tab="qr-code">QR Code & Link</button>
+      </div>
+
+      <div class="admin-tab-content" id="tab-manage-products">
+        <p class="admin-help-text">Yahan jo bhi change karenge — rate, stock, delete — turant live database me save hoga aur sabhi customers ko turant naya data dikhega (bina file re-upload kiye).</p>
+        <div id="admin-products-container"></div>
+      </div>
+
+      <div class="admin-tab-content hidden" id="tab-add-product">
+        <div class="form-group">
+          <label>Product Photo</label>
+          <div class="img-preview" id="add-img-preview">📷</div>
+          <input type="file" id="add-product-image" accept="image/*">
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Product Name</label><input type="text" id="add-name" placeholder="e.g. Cotton Saree"></div>
+          <div class="form-group"><label>Category</label>
+            <select id="add-category">
+              <option>Mens Wear</option><option>Womens Wear</option><option>Footwear</option><option>Kids Wear</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="add-desc" rows="2" placeholder="Short description"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>Price (₹)</label><input type="number" id="add-price" min="0" placeholder="e.g. 999"></div>
+          <div class="form-group"><label>Unit</label><input type="text" id="add-unit" placeholder="1 Piece / 1 Pair" value="1 Piece"></div>
+        </div>
+        <button class="btn btn-primary btn-block" id="add-product-submit">➕ Add Product</button>
+      </div>
+
+      <div class="admin-tab-content hidden" id="tab-shop-settings">
+        <div class="form-group"><label>Shop Name</label><input type="text" id="set-shop-name"></div>
+        <div class="form-group"><label>Tagline</label><input type="text" id="set-tagline"></div>
+        <div class="form-group"><label>Address</label><input type="text" id="set-address"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Opening Hours</label><input type="text" id="set-hours"></div>
+          <div class="form-group"><label>Call Number</label><input type="text" id="set-phone" placeholder="+91XXXXXXXXXX"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>WhatsApp Number</label><input type="text" id="set-whatsapp" placeholder="91XXXXXXXXXX"></div>
+          <div class="form-group"><label>Delivery Fee (₹)</label><input type="number" id="set-delivery-fee"></div>
+        </div>
+        <div class="form-group"><label>Free Delivery Above (₹)</label><input type="number" id="set-free-above"></div>
+        <div class="form-group"><label>Change Admin Password</label><input type="text" id="set-password" placeholder="Leave to keep current password"></div>
+        <button class="btn btn-primary btn-block" id="save-settings-btn">💾 Save Settings</button>
+      </div>
+
+      <div class="admin-tab-content hidden" id="tab-qr-code">
+        <div id="qr-code-box">
+          <div id="qr-canvas-holder"><div id="admin-qr"></div></div>
+          <p style="font-size:13px;color:#6b7488;text-align:center;">Ye QR code is page ke live link ko point karta hai. Print karke shop me laga sakte hain.</p>
+          <div class="link-box"><input type="text" id="page-link-input" readonly><button class="btn btn-outline" id="copy-link-btn">Copy</button></div>
+        </div>
+        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border);">
+        <p class="admin-help-text">✅ Ye catalog ab live database (Supabase) se juda hua hai — koi bhi change turant sabko dikhega, koi file dobara upload karne ki zaroorat nahi.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const CART_KEY = 'srCatalogCart_v1';
+  let sb = null;
+  let shopData = {
+    shopName:'SR COLLECTIONS AND DEEP FOOTWEAR', tagline:'', address:'', hours:'',
+    phone:'', whatsapp:'', deliveryFee:0, freeDeliveryAbove:0, adminPassword:'admin123',
+    products: []
+  };
+  let cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+  let activeCategory = 'All';
+  let searchTerm = '';
+
+  function saveCart(){ localStorage.setItem(CART_KEY, JSON.stringify(cart)); }
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+  function money(n){ return '₹' + Number(n).toLocaleString('en-IN'); }
+
+  // ---------- SUPABASE INIT ----------
+  if(SUPABASE_URL.startsWith('PASTE_') || SUPABASE_ANON_KEY.startsWith('PASTE_')){
+    document.getElementById('config-banner').classList.remove('hidden');
+  } else {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  async function loadSettings(){
+    if(!sb) return;
+    const { data, error } = await sb.from('shop_settings').select('*').eq('id', 1).single();
+    if(error || !data) return;
+    shopData.shopName = data.shop_name; shopData.tagline = data.tagline;
+    shopData.address = data.address; shopData.hours = data.hours;
+    shopData.phone = data.phone; shopData.whatsapp = data.whatsapp;
+    shopData.deliveryFee = data.delivery_fee; shopData.freeDeliveryAbove = data.free_delivery_above;
+    shopData.adminPassword = data.admin_password;
+    renderShopInfo();
+  }
+
+  async function loadProducts(){
+    if(!sb) return;
+    const { data, error } = await sb.from('products').select('*').order('created_at', {ascending:true});
+    if(error){ toast('Products load nahi ho paye'); return; }
+    shopData.products = (data||[]).map(p=>({
+      id:p.id, name:p.name, desc:p.description, category:p.category,
+      price:p.price, unit:p.unit, image:p.image, inStock:p.in_stock
+    }));
+    renderCategoryTabs(); renderProducts();
+  }
+
+  // ---------- RENDER: shop info ----------
+  function renderShopInfo(){
+    document.getElementById('shop-name').textContent = shopData.shopName;
+    document.getElementById('shop-tagline').textContent = shopData.tagline;
+    document.getElementById('footer-shop-name').textContent = shopData.shopName;
+    document.getElementById('shop-address').textContent = shopData.address;
+    document.getElementById('shop-hours').textContent = shopData.hours;
+    document.getElementById('shop-delivery-charge').textContent = '₹' + shopData.deliveryFee + ' Delivery Fee (Free above ₹' + shopData.freeDeliveryAbove + ')';
+    document.getElementById('top-delivery-promo').textContent = 'Free delivery on orders above ₹' + shopData.freeDeliveryAbove + '!';
+    document.getElementById('top-call-link').href = 'tel:' + shopData.phone;
+    const waLink = 'https://wa.me/' + shopData.whatsapp;
+    document.getElementById('hero-whatsapp-link').href = waLink;
+    document.getElementById('footer-whatsapp-link').href = waLink;
+  }
+
+  // ---------- RENDER: category tabs ----------
+  function renderCategoryTabs(){
+    const cats = ['All', ...new Set(shopData.products.map(p=>p.category))];
+    const box = document.getElementById('category-tabs');
+    box.innerHTML = cats.map(c=>`<button class="cat-tab ${c===activeCategory?'active':''}" data-cat="${c}">${c}</button>`).join('');
+    box.querySelectorAll('.cat-tab').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ activeCategory = btn.dataset.cat; renderCategoryTabs(); renderProducts(); });
+    });
+  }
+
+  // ---------- RENDER: product grid ----------
+  function productImageHTML(p){
+    if(p.image){ return `<img src="${p.image}" alt="${p.name}">`; }
+    return '🛍️';
+  }
+  function renderProducts(){
+    const grid = document.getElementById('product-grid');
+    let list = shopData.products.filter(p=>{
+      const matchCat = activeCategory==='All' || p.category===activeCategory;
+      const matchSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm) || p.category.toLowerCase().includes(searchTerm);
+      return matchCat && matchSearch;
+    });
+    if(list.length===0){ grid.innerHTML = '<div class="empty-state">Koi product nahi mila.</div>'; return; }
+    grid.innerHTML = list.map(p=>`
+      <div class="product-card">
+        <div class="product-img-box">
+          <span class="unit-badge">${p.unit}</span>
+          ${productImageHTML(p)}
+          ${!p.inStock ? '<div class="oos-badge">Out of Stock</div>' : ''}
+        </div>
+        <div class="product-body">
+          <span class="product-cat-tag">${p.category}</span>
+          <span class="product-name">${p.name}</span>
+          <span class="product-desc">${p.desc||''}</span>
+          <div class="product-footer">
+            <span class="product-price">${money(p.price)}<span>per ${p.unit}</span></span>
+            <button class="add-btn" data-id="${p.id}" ${!p.inStock?'disabled':''}>+</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    grid.querySelectorAll('.add-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ addToCart(btn.dataset.id); });
+    });
+  }
+
+  // ---------- CART ----------
+  function addToCart(id){
+    const p = shopData.products.find(x=>x.id===id);
+    if(!p || !p.inStock) return;
+    const existing = cart.find(c=>c.id===id);
+    if(existing){ existing.qty += 1; } else { cart.push({id, qty:1}); }
+    saveCart(); renderCartBadge(); toast(p.name + ' cart me add ho gaya');
+  }
+  function renderCartBadge(){
+    const count = cart.reduce((s,c)=>s+c.qty, 0);
+    document.getElementById('cart-badge-count').textContent = count;
+  }
+  function renderCart(){
+    const box = document.getElementById('cart-items');
+    if(cart.length===0){ box.innerHTML = '<p style="text-align:center;color:#8b93a6;padding:30px 0;">Aapka cart khali hai.</p>'; }
+    else{
+      box.innerHTML = cart.map(c=>{
+        const p = shopData.products.find(x=>x.id===c.id);
+        if(!p) return '';
+        return `<div class="cart-item">
+          <div class="cart-item-emoji">${productImageHTML(p)}</div>
+          <div class="cart-item-info">
+            <h4>${p.name}</h4>
+            <div>${money(p.price)} x ${c.qty} = <strong>${money(p.price*c.qty)}</strong></div>
+            <div class="qty-control">
+              <button data-act="dec" data-id="${c.id}">−</button>
+              <span>${c.qty}</span>
+              <button data-act="inc" data-id="${c.id}">+</button>
+              <button class="remove-item-btn" data-act="remove" data-id="${c.id}">Remove</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    let subtotal = cart.reduce((s,c)=>{ const p = shopData.products.find(x=>x.id===c.id); return s + (p?p.price*c.qty:0); }, 0);
+    let delivery = subtotal===0 ? 0 : (subtotal >= shopData.freeDeliveryAbove ? 0 : shopData.deliveryFee);
+    document.getElementById('cart-subtotal').textContent = money(subtotal);
+    document.getElementById('cart-delivery').textContent = delivery===0 ? 'FREE' : money(delivery);
+    document.getElementById('cart-total').textContent = money(subtotal+delivery);
+    box.querySelectorAll('[data-act]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.id, act = btn.dataset.act;
+        const item = cart.find(c=>c.id===id);
+        if(act==='inc') item.qty += 1;
+        if(act==='dec'){ item.qty -= 1; if(item.qty<=0) cart = cart.filter(c=>c.id!==id); }
+        if(act==='remove') cart = cart.filter(c=>c.id!==id);
+        saveCart(); renderCart(); renderCartBadge();
+      });
+    });
+  }
+
+  document.getElementById('cart-toggle').addEventListener('click', ()=>{
+    renderCart();
+    document.getElementById('cart-overlay').classList.remove('hidden');
+  });
+  document.getElementById('cart-close').addEventListener('click', ()=>{
+    document.getElementById('cart-overlay').classList.add('hidden');
+  });
+  document.getElementById('cart-overlay').addEventListener('click', (e)=>{
+    if(e.target.id==='cart-overlay') document.getElementById('cart-overlay').classList.add('hidden');
+  });
+
+  document.getElementById('checkout-whatsapp-btn').addEventListener('click', ()=>{
+    if(cart.length===0){ toast('Cart khali hai'); return; }
+    let lines = ['Hi, mujhe ye order karna hai:'];
+    let subtotal = 0;
+    cart.forEach((c,i)=>{
+      const p = shopData.products.find(x=>x.id===c.id);
+      if(!p) return;
+      const lineTotal = p.price*c.qty;
+      subtotal += lineTotal;
+      lines.push(`${i+1}. ${p.name} x${c.qty} - ${money(lineTotal)}`);
+    });
+    let delivery = subtotal >= shopData.freeDeliveryAbove ? 0 : shopData.deliveryFee;
+    lines.push('');
+    lines.push(`Subtotal: ${money(subtotal)}`);
+    lines.push(`Delivery: ${delivery===0?'FREE':money(delivery)}`);
+    lines.push(`Total: ${money(subtotal+delivery)}`);
+    const text = encodeURIComponent(lines.join('\n'));
+    window.open(`https://wa.me/${shopData.whatsapp}?text=${text}`, '_blank');
+  });
+
+  // ---------- SEARCH ----------
+  document.getElementById('search-input').addEventListener('input', (e)=>{
+    searchTerm = e.target.value.trim().toLowerCase();
+    renderProducts();
+  });
+
+  // ---------- ADMIN LOGIN ----------
+  function openLogin(){ document.getElementById('admin-login-overlay').classList.remove('hidden'); document.getElementById('admin-password').value=''; document.getElementById('login-error-msg').classList.add('hidden'); }
+  document.getElementById('admin-open-btn').addEventListener('click', openLogin);
+  document.getElementById('admin-open-btn-2').addEventListener('click', openLogin);
+  document.getElementById('admin-login-close').addEventListener('click', ()=> document.getElementById('admin-login-overlay').classList.add('hidden'));
+  document.getElementById('admin-login-submit').addEventListener('click', tryLogin);
+  document.getElementById('admin-password').addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryLogin(); });
+  function tryLogin(){
+    const val = document.getElementById('admin-password').value;
+    if(val === shopData.adminPassword){
+      document.getElementById('admin-login-overlay').classList.add('hidden');
+      openAdminDashboard();
+    } else {
+      document.getElementById('login-error-msg').classList.remove('hidden');
+    }
+  }
+
+  // ---------- ADMIN DASHBOARD ----------
+  function openAdminDashboard(){
+    document.getElementById('admin-dashboard-overlay').classList.remove('hidden');
+    renderAdminProducts();
+    fillSettingsForm();
+    renderAdminQR();
+  }
+  document.getElementById('admin-dashboard-close').addEventListener('click', ()=> document.getElementById('admin-dashboard-overlay').classList.add('hidden'));
+  document.querySelectorAll('.admin-tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.admin-tab-content').forEach(c=>c.classList.add('hidden'));
+      document.getElementById('tab-'+btn.dataset.tab).classList.remove('hidden');
+    });
+  });
+
+  function renderAdminProducts(){
+    const box = document.getElementById('admin-products-container');
+    box.innerHTML = shopData.products.map(p=>`
+      <div class="admin-product-row" data-id="${p.id}">
+        <div class="admin-product-thumb">${productImageHTML(p)}</div>
+        <div class="admin-product-name-info">
+          <span class="admin-product-title">${p.name}</span>
+          <span class="admin-product-cat-tag">${p.category} · ${p.unit}</span>
+        </div>
+        <input type="number" class="admin-rate-input" data-id="${p.id}" value="${p.price}" min="0">
+        <label class="toggle-switch">
+          <input type="checkbox" class="stock-toggle" data-id="${p.id}" ${p.inStock?'checked':''}>
+          <span class="toggle-slider"></span>
+        </label>
+        <button class="icon-btn danger delete-product-btn" data-id="${p.id}">🗑️</button>
+      </div>
+    `).join('');
+    box.querySelectorAll('.admin-rate-input').forEach(inp=>{
+      inp.addEventListener('change', async ()=>{
+        const newPrice = Number(inp.value)||0;
+        const { error } = await sb.from('products').update({price:newPrice}).eq('id', inp.dataset.id);
+        if(error){ toast('Update fail hua'); return; }
+        toast('Rate updated');
+      });
+    });
+    box.querySelectorAll('.stock-toggle').forEach(chk=>{
+      chk.addEventListener('change', async ()=>{
+        const { error } = await sb.from('products').update({in_stock: chk.checked}).eq('id', chk.dataset.id);
+        if(error){ toast('Update fail hua'); }
+      });
+    });
+    box.querySelectorAll('.delete-product-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if(!confirm('Delete this product?')) return;
+        const { error } = await sb.from('products').delete().eq('id', btn.dataset.id);
+        if(error){ toast('Delete fail hua'); return; }
+        toast('Product deleted');
+      });
+    });
+  }
+
+  // ---------- ADD PRODUCT ----------
+  let pendingImageFile = null;
+  document.getElementById('add-product-image').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    pendingImageFile = file;
+    const reader = new FileReader();
+    reader.onload = ()=>{ document.getElementById('add-img-preview').innerHTML = `<img src="${reader.result}">`; };
+    reader.readAsDataURL(file);
+  });
+
+  async function uploadImage(file){
+    const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
+    const { data, error } = await sb.storage.from('product-images').upload(fileName, file);
+    if(error){ toast('Photo upload fail hua: ' + error.message); return ''; }
+    const { data: urlData } = sb.storage.from('product-images').getPublicUrl(fileName);
+    return urlData.publicUrl;
+  }
+
+  document.getElementById('add-product-submit').addEventListener('click', async ()=>{
+    const name = document.getElementById('add-name').value.trim();
+    const price = Number(document.getElementById('add-price').value);
+    if(!name || !price){ toast('Naam aur price zaroori hai'); return; }
+    const btn = document.getElementById('add-product-submit');
+    btn.textContent = 'Adding…'; btn.disabled = true;
+    let imageUrl = '';
+    if(pendingImageFile){ imageUrl = await uploadImage(pendingImageFile); }
+    const { error } = await sb.from('products').insert({
+      name,
+      description: document.getElementById('add-desc').value.trim(),
+      category: document.getElementById('add-category').value,
+      price,
+      unit: document.getElementById('add-unit').value.trim() || '1 Piece',
+      image: imageUrl,
+      in_stock: true
+    });
+    btn.textContent = '➕ Add Product'; btn.disabled = false;
+    if(error){ toast('Add fail hua: ' + error.message); return; }
+    document.getElementById('add-name').value=''; document.getElementById('add-desc').value='';
+    document.getElementById('add-price').value=''; document.getElementById('add-unit').value='1 Piece';
+    document.getElementById('add-img-preview').innerHTML='📷'; pendingImageFile=null;
+    document.getElementById('add-product-image').value = '';
+    toast('Product added — live ho gaya sabke liye!');
+  });
+
+  // ---------- SHOP SETTINGS ----------
+  function fillSettingsForm(){
+    document.getElementById('set-shop-name').value = shopData.shopName;
+    document.getElementById('set-tagline').value = shopData.tagline;
+    document.getElementById('set-address').value = shopData.address;
+    document.getElementById('set-hours').value = shopData.hours;
+    document.getElementById('set-phone').value = shopData.phone;
+    document.getElementById('set-whatsapp').value = shopData.whatsapp;
+    document.getElementById('set-delivery-fee').value = shopData.deliveryFee;
+    document.getElementById('set-free-above').value = shopData.freeDeliveryAbove;
+    document.getElementById('set-password').value = '';
+  }
+  document.getElementById('save-settings-btn').addEventListener('click', async ()=>{
+    const payload = {
+      shop_name: document.getElementById('set-shop-name').value.trim() || shopData.shopName,
+      tagline: document.getElementById('set-tagline').value.trim(),
+      address: document.getElementById('set-address').value.trim(),
+      hours: document.getElementById('set-hours').value.trim(),
+      phone: document.getElementById('set-phone').value.trim(),
+      whatsapp: document.getElementById('set-whatsapp').value.trim().replace(/[^0-9]/g,''),
+      delivery_fee: Number(document.getElementById('set-delivery-fee').value)||0,
+      free_delivery_above: Number(document.getElementById('set-free-above').value)||0
+    };
+    const newPass = document.getElementById('set-password').value.trim();
+    if(newPass) payload.admin_password = newPass;
+    const { error } = await sb.from('shop_settings').update(payload).eq('id', 1);
+    if(error){ toast('Save fail hua: ' + error.message); return; }
+    toast('Settings saved');
+  });
+
+  // ---------- QR CODE ----------
+  function renderAdminQR(){
+    const link = window.location.href.split('#')[0];
+    document.getElementById('page-link-input').value = link;
+    document.getElementById('admin-qr').innerHTML = '';
+    document.getElementById('hero-qr').innerHTML = '';
+    if(window.QRCode){
+      new QRCode(document.getElementById('admin-qr'), {text: link, width:180, height:180});
+      new QRCode(document.getElementById('hero-qr'), {text: link, width:120, height:120});
+    }
+  }
+  document.getElementById('copy-link-btn').addEventListener('click', ()=>{
+    const inp = document.getElementById('page-link-input');
+    inp.select(); document.execCommand('copy'); toast('Link copied!');
+  });
+
+  // ---------- REALTIME: auto-refresh for all connected customers ----------
+  function setupRealtime(){
+    if(!sb) return;
+    sb.channel('public:products')
+      .on('postgres_changes', {event:'*', schema:'public', table:'products'}, ()=>{ loadProducts(); })
+      .subscribe();
+    sb.channel('public:shop_settings')
+      .on('postgres_changes', {event:'*', schema:'public', table:'shop_settings'}, ()=>{ loadSettings(); })
+      .subscribe();
+  }
+
+  // ---------- INIT ----------
+  async function init(){
+    renderCartBadge();
+    if(sb){
+      await loadSettings();
+      await loadProducts();
+      setupRealtime();
+    } else {
+      document.getElementById('product-grid').innerHTML = '<div class="empty-state">Supabase URL/Key set nahi hai. File ke top wale script tag me apna SUPABASE_URL aur SUPABASE_ANON_KEY daalein.</div>';
+    }
+    setTimeout(renderAdminQR, 300);
+  }
+  init();
+})();
+</script>
+</body>
+</html>
