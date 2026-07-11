@@ -377,6 +377,7 @@
   let cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
   let activeCategory = 'All';
   let searchTerm = '';
+  let productsFetchSeq = 0; // guards against race conditions between overlapping fetches
 
   function saveCart(){ localStorage.setItem(CART_KEY, JSON.stringify(cart)); }
   function toast(msg){
@@ -385,6 +386,7 @@
     setTimeout(()=>t.classList.remove('show'), 2200);
   }
   function money(n){ return '₹' + Number(n).toLocaleString('en-IN'); }
+  function isAdminOpen(){ return !document.getElementById('admin-dashboard-overlay').classList.contains('hidden'); }
 
   // ---------- SUPABASE INIT ----------
   if(SUPABASE_URL.startsWith('PASTE_') || SUPABASE_ANON_KEY.startsWith('PASTE_')){
@@ -395,25 +397,35 @@
 
   async function loadSettings(){
     if(!sb) return;
-    const { data, error } = await sb.from('shop_settings').select('*').eq('id', 1).single();
-    if(error || !data) return;
-    shopData.shopName = data.shop_name; shopData.tagline = data.tagline;
-    shopData.address = data.address; shopData.hours = data.hours;
-    shopData.phone = data.phone; shopData.whatsapp = data.whatsapp;
-    shopData.deliveryFee = data.delivery_fee; shopData.freeDeliveryAbove = data.free_delivery_above;
-    shopData.adminPassword = data.admin_password;
-    renderShopInfo();
+    try{
+      const { data, error } = await sb.from('shop_settings').select('*').eq('id', 1).single();
+      if(error || !data){ console.error('settings load error', error); return; }
+      shopData.shopName = data.shop_name; shopData.tagline = data.tagline;
+      shopData.address = data.address; shopData.hours = data.hours;
+      shopData.phone = data.phone; shopData.whatsapp = data.whatsapp;
+      shopData.deliveryFee = data.delivery_fee; shopData.freeDeliveryAbove = data.free_delivery_above;
+      shopData.adminPassword = data.admin_password;
+      renderShopInfo();
+    }catch(e){ console.error(e); }
   }
 
   async function loadProducts(){
     if(!sb) return;
-    const { data, error } = await sb.from('products').select('*').order('created_at', {ascending:true});
-    if(error){ toast('Products load nahi ho paye'); return; }
-    shopData.products = (data||[]).map(p=>({
-      id:p.id, name:p.name, desc:p.description, category:p.category,
-      price:p.price, unit:p.unit, image:p.image, inStock:p.in_stock
-    }));
-    renderCategoryTabs(); renderProducts();
+    const seq = ++productsFetchSeq;
+    try{
+      const { data, error } = await sb.from('products').select('*').order('created_at', {ascending:true});
+      if(seq !== productsFetchSeq) return; // a newer fetch already started, ignore this stale result
+      if(error){ console.error('products load error', error); toast('Products load nahi ho paye'); return; }
+      shopData.products = (data||[]).map(p=>({
+        id:p.id, name:p.name, desc:p.description, category:p.category,
+        price:p.price, unit:p.unit, image:p.image, inStock:p.in_stock
+      }));
+      renderCategoryTabs(); renderProducts();
+      if(isAdminOpen()) renderAdminProducts();
+    }catch(e){
+      console.error(e);
+      toast('Products load me error aayi');
+    }
   }
 
   // ---------- RENDER: shop info ----------
@@ -434,6 +446,7 @@
   // ---------- RENDER: category tabs ----------
   function renderCategoryTabs(){
     const cats = ['All', ...new Set(shopData.products.map(p=>p.category))];
+    if(!cats.includes(activeCategory)) activeCategory = 'All';
     const box = document.getElementById('category-tabs');
     box.innerHTML = cats.map(c=>`<button class="cat-tab ${c===activeCategory?'active':''}" data-cat="${c}">${c}</button>`).join('');
     box.querySelectorAll('.cat-tab').forEach(btn=>{
@@ -467,13 +480,13 @@
           <span class="product-desc">${p.desc||''}</span>
           <div class="product-footer">
             <span class="product-price">${money(p.price)}<span>per ${p.unit}</span></span>
-            <button class="add-btn" data-id="${p.id}" ${!p.inStock?'disabled':''}>+</button>
+            <button class="add-btn" type="button" data-id="${p.id}" ${!p.inStock?'disabled':''}>+</button>
           </div>
         </div>
       </div>
     `).join('');
     grid.querySelectorAll('.add-btn').forEach(btn=>{
-      btn.addEventListener('click', ()=>{ addToCart(btn.dataset.id); });
+      btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); addToCart(btn.dataset.id); });
     });
   }
 
@@ -620,22 +633,25 @@
       inp.addEventListener('change', async ()=>{
         const newPrice = Number(inp.value)||0;
         const { error } = await sb.from('products').update({price:newPrice}).eq('id', inp.dataset.id);
-        if(error){ toast('Update fail hua'); return; }
+        if(error){ console.error(error); toast('Update fail hua'); return; }
         toast('Rate updated');
+        await loadProducts();
       });
     });
     box.querySelectorAll('.stock-toggle').forEach(chk=>{
       chk.addEventListener('change', async ()=>{
         const { error } = await sb.from('products').update({in_stock: chk.checked}).eq('id', chk.dataset.id);
-        if(error){ toast('Update fail hua'); }
+        if(error){ console.error(error); toast('Update fail hua'); return; }
+        await loadProducts();
       });
     });
     box.querySelectorAll('.delete-product-btn').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         if(!confirm('Delete this product?')) return;
         const { error } = await sb.from('products').delete().eq('id', btn.dataset.id);
-        if(error){ toast('Delete fail hua'); return; }
+        if(error){ console.error(error); toast('Delete fail hua'); return; }
         toast('Product deleted');
+        await loadProducts();
       });
     });
   }
@@ -652,11 +668,13 @@
   });
 
   async function uploadImage(file){
-    const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
-    const { data, error } = await sb.storage.from('product-images').upload(fileName, file);
-    if(error){ toast('Photo upload fail hua: ' + error.message); return ''; }
-    const { data: urlData } = sb.storage.from('product-images').getPublicUrl(fileName);
-    return urlData.publicUrl;
+    try{
+      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
+      const { data, error } = await sb.storage.from('product-images').upload(fileName, file);
+      if(error){ console.error(error); toast('Photo upload fail hua: ' + error.message); return ''; }
+      const { data: urlData } = sb.storage.from('product-images').getPublicUrl(fileName);
+      return urlData.publicUrl;
+    }catch(e){ console.error(e); toast('Photo upload me error'); return ''; }
   }
 
   document.getElementById('add-product-submit').addEventListener('click', async ()=>{
@@ -677,11 +695,12 @@
       in_stock: true
     });
     btn.textContent = '➕ Add Product'; btn.disabled = false;
-    if(error){ toast('Add fail hua: ' + error.message); return; }
+    if(error){ console.error(error); toast('Add fail hua: ' + error.message); return; }
     document.getElementById('add-name').value=''; document.getElementById('add-desc').value='';
     document.getElementById('add-price').value=''; document.getElementById('add-unit').value='1 Piece';
     document.getElementById('add-img-preview').innerHTML='📷'; pendingImageFile=null;
     document.getElementById('add-product-image').value = '';
+    await loadProducts();
     toast('Product added — live ho gaya sabke liye!');
   });
 
@@ -711,7 +730,8 @@
     const newPass = document.getElementById('set-password').value.trim();
     if(newPass) payload.admin_password = newPass;
     const { error } = await sb.from('shop_settings').update(payload).eq('id', 1);
-    if(error){ toast('Save fail hua: ' + error.message); return; }
+    if(error){ console.error(error); toast('Save fail hua: ' + error.message); return; }
+    await loadSettings();
     toast('Settings saved');
   });
 
@@ -736,10 +756,10 @@
     if(!sb) return;
     sb.channel('public:products')
       .on('postgres_changes', {event:'*', schema:'public', table:'products'}, ()=>{ loadProducts(); })
-      .subscribe();
+      .subscribe((status)=>{ console.log('products realtime status:', status); });
     sb.channel('public:shop_settings')
       .on('postgres_changes', {event:'*', schema:'public', table:'shop_settings'}, ()=>{ loadSettings(); })
-      .subscribe();
+      .subscribe((status)=>{ console.log('settings realtime status:', status); });
   }
 
   // ---------- INIT ----------
@@ -756,6 +776,3 @@
   }
   init();
 })();
-</script>
-</body>
-</html>
