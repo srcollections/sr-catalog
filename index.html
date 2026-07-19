@@ -153,6 +153,34 @@
   .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
   .config-banner{background:#fff3cd; color:#664d03; padding:14px 20px; font-size:13.5px; text-align:center; font-weight:600;}
 
+  /* Multi-photo gallery */
+  .product-card{cursor:pointer;}
+  .photo-count-badge{position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,.6); color:#fff; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; display:flex; align-items:center; gap:4px;}
+  .gallery-overlay{position:fixed; inset:0; background:rgba(5,8,18,.9); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .gallery-box{max-width:600px; width:100%; display:flex; flex-direction:column; align-items:center; gap:14px;}
+  .gallery-main{width:100%; max-height:60vh; background:#11172a; border-radius:14px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; min-height:260px;}
+  .gallery-main img{max-width:100%; max-height:60vh; object-fit:contain;}
+  .gallery-main .emoji-fallback{font-size:100px;}
+  .gallery-nav-btn{position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.15); color:#fff; width:40px; height:40px; border-radius:50%; font-size:18px; display:flex; align-items:center; justify-content:center;}
+  .gallery-nav-btn.prev{left:12px;} .gallery-nav-btn.next{right:12px;}
+  .gallery-close-btn{position:absolute; top:16px; right:16px; background:rgba(255,255,255,.15); color:#fff; width:34px; height:34px; border-radius:50%; font-size:15px;}
+  .gallery-info{color:#fff; text-align:center;}
+  .gallery-info h3{font-size:17px; margin-bottom:4px;}
+  .gallery-info p{font-size:13px; color:#aab2c9;}
+  .gallery-thumbs{display:flex; gap:8px; overflow-x:auto; max-width:100%; padding-bottom:4px;}
+  .gallery-thumbs img{width:52px; height:52px; object-fit:cover; border-radius:8px; opacity:.5; cursor:pointer; border:2px solid transparent; flex-shrink:0;}
+  .gallery-thumbs img.active{opacity:1; border-color:var(--green);}
+
+  /* Add product: multi-photo picker */
+  .photo-picker-strip{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;}
+  .photo-picker-thumb{position:relative; width:76px; height:76px; border-radius:10px; overflow:hidden; background:#f0f2f8;}
+  .photo-picker-thumb img{width:100%; height:100%; object-fit:cover;}
+  .photo-picker-remove{position:absolute; top:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; width:20px; height:20px; border-radius:50%; font-size:11px; display:flex; align-items:center; justify-content:center;}
+  .photo-picker-add{width:76px; height:76px; border-radius:10px; border:1.5px dashed var(--border); display:flex; align-items:center; justify-content:center; font-size:22px; color:#8b93a6; background:#f7f9fc; cursor:pointer;}
+
+  /* Admin: manage photos per product */
+  .admin-photo-manage-btn{background:none; color:var(--green-dark); font-size:12px; font-weight:700;}
+
   .site-footer{background:var(--navy); color:var(--text-dim); padding:34px 0 18px; margin-top:20px;}
   .footer-grid{display:flex; justify-content:space-between; flex-wrap:wrap; gap:20px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,.08);}
   .footer-grid h3{color:#fff; font-size:16px; margin-bottom:8px;}
@@ -314,9 +342,11 @@
 
       <div class="admin-tab-content hidden" id="tab-add-product">
         <div class="form-group">
-          <label>Product Photo</label>
-          <div class="img-preview" id="add-img-preview">📷</div>
-          <input type="file" id="add-product-image" accept="image/*">
+          <label>Product Photos (multiple select kar sakte ho)</label>
+          <div class="photo-picker-strip" id="add-photo-strip">
+            <label class="photo-picker-add" id="add-photo-trigger">➕</label>
+          </div>
+          <input type="file" id="add-product-image" accept="image/*" multiple class="hidden">
         </div>
         <div class="form-row">
           <div class="form-group"><label>Product Name</label><input type="text" id="add-name" placeholder="e.g. Cotton Saree"></div>
@@ -364,6 +394,21 @@
   </div>
 </div>
 
+<div class="gallery-overlay hidden" id="gallery-overlay">
+  <div class="gallery-box">
+    <div class="gallery-main" id="gallery-main">
+      <button class="gallery-close-btn" id="gallery-close-btn">✕</button>
+      <button class="gallery-nav-btn prev" id="gallery-prev-btn">‹</button>
+      <button class="gallery-nav-btn next" id="gallery-next-btn">›</button>
+    </div>
+    <div class="gallery-thumbs" id="gallery-thumbs"></div>
+    <div class="gallery-info">
+      <h3 id="gallery-product-name"></h3>
+      <p id="gallery-product-price"></p>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -378,6 +423,7 @@
   let cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
   let activeCategory = 'All';
   let searchTerm = '';
+  let productsFetchSeq = 0; // guards against overlapping/out-of-order fetch results
 
   function saveCart(){ localStorage.setItem(CART_KEY, JSON.stringify(cart)); }
   function toast(msg){
@@ -430,15 +476,18 @@
 
   async function loadProducts(){
     if(!sb) return;
+    const seq = ++productsFetchSeq;
     let data, error;
     try{
       const res = await sb.from('products').select('*').order('created_at', {ascending:true});
       data = res.data; error = res.error;
     }catch(e){
+      if(seq !== productsFetchSeq) return; // stale call, a newer one is already in flight
       showError('Products load karte waqt network/connection error aayi: ' + e.message);
       document.getElementById('product-grid').innerHTML = '<div class="empty-state">Connection error — upar wala red message dekhein.</div>';
       return;
     }
+    if(seq !== productsFetchSeq) return; // a newer fetch already started, ignore this stale result
     if(error){
       showError('Products load nahi ho paye: ' + error.message);
       document.getElementById('product-grid').innerHTML = '<div class="empty-state">Database error — upar wala red message dekhein.</div>';
@@ -447,7 +496,7 @@
     clearError();
     shopData.products = (data||[]).map(p=>({
       id:p.id, name:p.name, desc:p.description, category:p.category,
-      price:p.price, unit:p.unit, image:p.image, inStock:p.in_stock
+      price:p.price, unit:p.unit, image:p.image, images:p.images||[], inStock:p.in_stock
     }));
     // agar currently selected category ab exist nahi karti (e.g. us category ka last product delete ho gaya), All par reset karo
     const cats = ['All', ...new Set(shopData.products.map(p=>p.category))];
@@ -489,23 +538,33 @@
   }
 
   // ---------- RENDER: product grid ----------
+  function getImages(p){
+    if(Array.isArray(p.images) && p.images.length) return p.images;
+    if(p.image) return [p.image];
+    return [];
+  }
   function productImageHTML(p){
-    if(p.image){ return `<img src="${p.image}" alt="${p.name}">`; }
+    const imgs = getImages(p);
+    if(imgs.length){ return `<img src="${imgs[0]}" alt="${p.name}">`; }
     return '🛍️';
   }
   function renderProducts(){
     const grid = document.getElementById('product-grid');
+    const norm = s => (s||'').toString().trim().toLowerCase();
     let list = shopData.products.filter(p=>{
-      const matchCat = activeCategory==='All' || p.category===activeCategory;
-      const matchSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm) || p.category.toLowerCase().includes(searchTerm);
+      const matchCat = activeCategory==='All' || norm(p.category)===norm(activeCategory);
+      const matchSearch = !searchTerm || norm(p.name).includes(searchTerm) || norm(p.category).includes(searchTerm);
       return matchCat && matchSearch;
     });
     if(list.length===0){ grid.innerHTML = '<div class="empty-state">Koi product nahi mila.</div>'; return; }
-    grid.innerHTML = list.map(p=>`
-      <div class="product-card">
+    grid.innerHTML = list.map(p=>{
+      const imgs = getImages(p);
+      return `
+      <div class="product-card" data-id="${p.id}">
         <div class="product-img-box">
           <span class="unit-badge">${p.unit}</span>
           ${productImageHTML(p)}
+          ${imgs.length>1 ? `<span class="photo-count-badge">📷 ${imgs.length}</span>` : ''}
           ${!p.inStock ? '<div class="oos-badge">Out of Stock</div>' : ''}
         </div>
         <div class="product-body">
@@ -518,11 +577,56 @@
           </div>
         </div>
       </div>
-    `).join('');
+    `;}).join('');
     grid.querySelectorAll('.add-btn').forEach(btn=>{
-      btn.addEventListener('click', ()=>{ addToCart(btn.dataset.id); });
+      btn.addEventListener('click', (e)=>{ e.stopPropagation(); addToCart(btn.dataset.id); });
+    });
+    grid.querySelectorAll('.product-card').forEach(card=>{
+      card.addEventListener('click', ()=>{ openGallery(card.dataset.id); });
     });
   }
+
+  // ---------- GALLERY (multi-photo viewer) ----------
+  let galleryImages = [];
+  let galleryIndex = 0;
+  function openGallery(productId){
+    const p = shopData.products.find(x=>x.id===productId);
+    if(!p) return;
+    galleryImages = getImages(p);
+    galleryIndex = 0;
+    document.getElementById('gallery-product-name').textContent = p.name;
+    document.getElementById('gallery-product-price').textContent = money(p.price) + ' per ' + p.unit;
+    renderGalleryMain();
+    renderGalleryThumbs();
+    document.getElementById('gallery-overlay').classList.remove('hidden');
+  }
+  function renderGalleryMain(){
+    const box = document.getElementById('gallery-main');
+    const controls = `<button class="gallery-close-btn" id="gallery-close-btn">✕</button>
+      ${galleryImages.length>1 ? '<button class="gallery-nav-btn prev" id="gallery-prev-btn">‹</button><button class="gallery-nav-btn next" id="gallery-next-btn">›</button>' : ''}`;
+    if(galleryImages.length){
+      box.innerHTML = controls + `<img src="${galleryImages[galleryIndex]}" alt="">`;
+    } else {
+      box.innerHTML = controls + `<span class="emoji-fallback">🛍️</span>`;
+    }
+    document.getElementById('gallery-close-btn').addEventListener('click', closeGallery);
+    const prevBtn = document.getElementById('gallery-prev-btn');
+    const nextBtn = document.getElementById('gallery-next-btn');
+    if(prevBtn) prevBtn.addEventListener('click', ()=>{ galleryIndex = (galleryIndex-1+galleryImages.length)%galleryImages.length; renderGalleryMain(); renderGalleryThumbs(); });
+    if(nextBtn) nextBtn.addEventListener('click', ()=>{ galleryIndex = (galleryIndex+1)%galleryImages.length; renderGalleryMain(); renderGalleryThumbs(); });
+  }
+  function renderGalleryThumbs(){
+    const box = document.getElementById('gallery-thumbs');
+    if(galleryImages.length<=1){ box.innerHTML=''; return; }
+    box.innerHTML = galleryImages.map((img,i)=>`<img src="${img}" class="${i===galleryIndex?'active':''}" data-i="${i}">`).join('');
+    box.querySelectorAll('img').forEach(t=>{
+      t.addEventListener('click', ()=>{ galleryIndex = Number(t.dataset.i); renderGalleryMain(); renderGalleryThumbs(); });
+    });
+  }
+  function closeGallery(){ document.getElementById('gallery-overlay').classList.add('hidden'); }
+  document.getElementById('gallery-overlay').addEventListener('click', (e)=>{
+    if(e.target.id==='gallery-overlay') closeGallery();
+  });
 
   // ---------- CART ----------
   function addToCart(id){
@@ -648,12 +752,15 @@
 
   function renderAdminProducts(){
     const box = document.getElementById('admin-products-container');
-    box.innerHTML = shopData.products.map(p=>`
+    box.innerHTML = shopData.products.map(p=>{
+      const imgCount = getImages(p).length;
+      return `
       <div class="admin-product-row" data-id="${p.id}">
         <div class="admin-product-thumb">${productImageHTML(p)}</div>
         <div class="admin-product-name-info">
           <span class="admin-product-title">${p.name}</span>
           <span class="admin-product-cat-tag">${p.category} · ${p.unit}</span>
+          <button class="admin-photo-manage-btn manage-photos-btn" data-id="${p.id}">📷 Photos (${imgCount})</button>
         </div>
         <input type="number" class="admin-rate-input" data-id="${p.id}" value="${p.price}" min="0">
         <label class="toggle-switch">
@@ -662,7 +769,7 @@
         </label>
         <button class="icon-btn danger delete-product-btn" data-id="${p.id}">🗑️</button>
       </div>
-    `).join('');
+    `;}).join('');
     box.querySelectorAll('.admin-rate-input').forEach(inp=>{
       inp.addEventListener('change', async ()=>{
         const newPrice = Number(inp.value)||0;
@@ -688,25 +795,106 @@
         await loadProducts();
       });
     });
+    box.querySelectorAll('.manage-photos-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ openPhotoManager(btn.dataset.id); });
+    });
   }
 
+  // ---------- ADMIN: manage photos for an existing product ----------
+  let managingProductId = null;
+  function openPhotoManager(productId){
+    managingProductId = productId;
+    const p = shopData.products.find(x=>x.id===productId);
+    if(!p) return;
+    galleryImages = getImages(p);
+    galleryIndex = 0;
+    document.getElementById('gallery-product-name').textContent = p.name + ' — Photos Manage Karein';
+    document.getElementById('gallery-product-price').innerHTML = `
+      <button class="btn btn-primary" id="pm-add-photo-btn" style="margin-top:8px;">➕ Naya Photo Add Karein</button>
+      ${galleryImages.length ? `<button class="btn btn-outline" id="pm-remove-photo-btn" style="margin-top:8px;margin-left:8px;">🗑️ Ye Photo Hataye</button>` : ''}
+      <input type="file" id="pm-file-input" accept="image/*" class="hidden">
+    `;
+    renderGalleryMain();
+    renderGalleryThumbs();
+    document.getElementById('gallery-overlay').classList.remove('hidden');
+    document.getElementById('pm-add-photo-btn').addEventListener('click', ()=>{ document.getElementById('pm-file-input').click(); });
+    document.getElementById('pm-file-input').addEventListener('change', async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      toast('Photo upload ho raha hai…');
+      const url = await uploadImage(file);
+      if(!url) return;
+      galleryImages.push(url);
+      const { error } = await sb.from('products').update({images: galleryImages, image: galleryImages[0]}).eq('id', managingProductId);
+      if(error){ toast('Save fail hua: ' + error.message); return; }
+      galleryIndex = galleryImages.length - 1;
+      openPhotoManager(managingProductId); // refresh with updated data after loadProducts below
+      await loadProducts();
+    });
+    const removeBtn = document.getElementById('pm-remove-photo-btn');
+    if(removeBtn) removeBtn.addEventListener('click', async ()=>{
+      if(!confirm('Ye photo hatana hai?')) return;
+      galleryImages.splice(galleryIndex, 1);
+      const { error } = await sb.from('products').update({images: galleryImages, image: galleryImages[0]||''}).eq('id', managingProductId);
+      if(error){ toast('Save fail hua: ' + error.message); return; }
+      galleryIndex = 0;
+      toast('Photo hata di gayi');
+      await loadProducts();
+      if(galleryImages.length){ openPhotoManager(managingProductId); } else { closeGallery(); }
+    });
+  }
+
+
   // ---------- ADD PRODUCT ----------
-  let pendingImageFile = null;
+  let pendingImageFiles = []; // array of {file, previewUrl}
+  function renderAddPhotoStrip(){
+    const strip = document.getElementById('add-photo-strip');
+    const thumbs = pendingImageFiles.map((item,i)=>`
+      <div class="photo-picker-thumb" data-i="${i}">
+        <img src="${item.previewUrl}">
+        <button class="photo-picker-remove" data-i="${i}">✕</button>
+      </div>
+    `).join('');
+    strip.innerHTML = thumbs + '<label class="photo-picker-add" id="add-photo-trigger">➕</label>';
+    document.getElementById('add-photo-trigger').addEventListener('click', ()=>{
+      document.getElementById('add-product-image').click();
+    });
+    strip.querySelectorAll('.photo-picker-remove').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        pendingImageFiles.splice(Number(btn.dataset.i), 1);
+        renderAddPhotoStrip();
+      });
+    });
+  }
+  renderAddPhotoStrip();
   document.getElementById('add-product-image').addEventListener('change', (e)=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    pendingImageFile = file;
-    const reader = new FileReader();
-    reader.onload = ()=>{ document.getElementById('add-img-preview').innerHTML = `<img src="${reader.result}">`; };
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    files.forEach(file=>{
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        pendingImageFiles.push({file, previewUrl: reader.result});
+        renderAddPhotoStrip();
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = ''; // allow re-selecting the same file again later
   });
 
   async function uploadImage(file){
-    const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
+    const fileName = `${Date.now()}_${Math.floor(Math.random()*10000)}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
     const { data, error } = await sb.storage.from('product-images').upload(fileName, file);
     if(error){ toast('Photo upload fail hua: ' + error.message); return ''; }
     const { data: urlData } = sb.storage.from('product-images').getPublicUrl(fileName);
     return urlData.publicUrl;
+  }
+  async function uploadAllPending(){
+    const urls = [];
+    for(const item of pendingImageFiles){
+      const url = await uploadImage(item.file);
+      if(url) urls.push(url);
+    }
+    return urls;
   }
 
   document.getElementById('add-product-submit').addEventListener('click', async ()=>{
@@ -715,23 +903,22 @@
     if(!name || !price){ toast('Naam aur price zaroori hai'); return; }
     const btn = document.getElementById('add-product-submit');
     btn.textContent = 'Adding…'; btn.disabled = true;
-    let imageUrl = '';
-    if(pendingImageFile){ imageUrl = await uploadImage(pendingImageFile); }
+    const imageUrls = pendingImageFiles.length ? await uploadAllPending() : [];
     const { error } = await sb.from('products').insert({
       name,
       description: document.getElementById('add-desc').value.trim(),
       category: document.getElementById('add-category').value,
       price,
       unit: document.getElementById('add-unit').value.trim() || '1 Piece',
-      image: imageUrl,
+      image: imageUrls[0] || '',
+      images: imageUrls,
       in_stock: true
     });
     btn.textContent = '➕ Add Product'; btn.disabled = false;
     if(error){ toast('Add fail hua: ' + error.message); return; }
     document.getElementById('add-name').value=''; document.getElementById('add-desc').value='';
     document.getElementById('add-price').value=''; document.getElementById('add-unit').value='1 Piece';
-    document.getElementById('add-img-preview').innerHTML='📷'; pendingImageFile=null;
-    document.getElementById('add-product-image').value = '';
+    pendingImageFiles = []; renderAddPhotoStrip();
     toast('Product added — live ho gaya sabke liye!');
     await loadProducts();
   });
