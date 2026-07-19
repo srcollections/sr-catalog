@@ -182,6 +182,7 @@
 <div class="config-banner hidden" id="config-banner">
   ⚠️ Setup incomplete: is file me SUPABASE_URL aur SUPABASE_ANON_KEY dalna baaki hai (top of file, script tag me).
 </div>
+<div class="config-banner hidden" id="error-banner" style="background:#f8d7da; color:#58151c;"></div>
 
 <div class="top-bar">
   <div class="container top-bar-content">
@@ -377,7 +378,6 @@
   let cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
   let activeCategory = 'All';
   let searchTerm = '';
-  let productsFetchSeq = 0; // guards against race conditions between overlapping fetches
 
   function saveCart(){ localStorage.setItem(CART_KEY, JSON.stringify(cart)); }
   function toast(msg){
@@ -386,45 +386,80 @@
     setTimeout(()=>t.classList.remove('show'), 2200);
   }
   function money(n){ return '₹' + Number(n).toLocaleString('en-IN'); }
-  function isAdminOpen(){ return !document.getElementById('admin-dashboard-overlay').classList.contains('hidden'); }
+
+  // ---------- ON-SCREEN ERROR BANNER (no DevTools needed) ----------
+  function showError(msg){
+    const b = document.getElementById('error-banner');
+    b.textContent = '❌ ' + msg;
+    b.classList.remove('hidden');
+  }
+  function clearError(){
+    const b = document.getElementById('error-banner');
+    b.classList.add('hidden');
+    b.textContent = '';
+  }
 
   // ---------- SUPABASE INIT ----------
   if(SUPABASE_URL.startsWith('PASTE_') || SUPABASE_ANON_KEY.startsWith('PASTE_')){
     document.getElementById('config-banner').classList.remove('hidden');
   } else {
-    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    try{
+      sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }catch(e){
+      showError('Supabase se connect nahi ho paya. URL/Key check karein. (' + e.message + ')');
+    }
   }
 
   async function loadSettings(){
     if(!sb) return;
     try{
       const { data, error } = await sb.from('shop_settings').select('*').eq('id', 1).single();
-      if(error || !data){ console.error('settings load error', error); return; }
+      if(error){ showError('Shop settings load nahi hui: ' + error.message); return; }
+      if(!data){ showError('Shop settings table khali hai. setup-fresh.sql dubara run karein.'); return; }
       shopData.shopName = data.shop_name; shopData.tagline = data.tagline;
       shopData.address = data.address; shopData.hours = data.hours;
       shopData.phone = data.phone; shopData.whatsapp = data.whatsapp;
       shopData.deliveryFee = data.delivery_fee; shopData.freeDeliveryAbove = data.free_delivery_above;
       shopData.adminPassword = data.admin_password;
       renderShopInfo();
-    }catch(e){ console.error(e); }
+      clearError();
+    }catch(e){
+      showError('Settings load karte waqt network/connection error aayi: ' + e.message);
+    }
   }
 
   async function loadProducts(){
     if(!sb) return;
-    const seq = ++productsFetchSeq;
+    let data, error;
     try{
-      const { data, error } = await sb.from('products').select('*').order('created_at', {ascending:true});
-      if(seq !== productsFetchSeq) return; // a newer fetch already started, ignore this stale result
-      if(error){ console.error('products load error', error); toast('Products load nahi ho paye'); return; }
-      shopData.products = (data||[]).map(p=>({
-        id:p.id, name:p.name, desc:p.description, category:p.category,
-        price:p.price, unit:p.unit, image:p.image, inStock:p.in_stock
-      }));
-      renderCategoryTabs(); renderProducts();
-      if(isAdminOpen()) renderAdminProducts();
+      const res = await sb.from('products').select('*').order('created_at', {ascending:true});
+      data = res.data; error = res.error;
     }catch(e){
-      console.error(e);
-      toast('Products load me error aayi');
+      showError('Products load karte waqt network/connection error aayi: ' + e.message);
+      document.getElementById('product-grid').innerHTML = '<div class="empty-state">Connection error — upar wala red message dekhein.</div>';
+      return;
+    }
+    if(error){
+      showError('Products load nahi ho paye: ' + error.message);
+      document.getElementById('product-grid').innerHTML = '<div class="empty-state">Database error — upar wala red message dekhein.</div>';
+      return;
+    }
+    clearError();
+    shopData.products = (data||[]).map(p=>({
+      id:p.id, name:p.name, desc:p.description, category:p.category,
+      price:p.price, unit:p.unit, image:p.image, inStock:p.in_stock
+    }));
+    // agar currently selected category ab exist nahi karti (e.g. us category ka last product delete ho gaya), All par reset karo
+    const cats = ['All', ...new Set(shopData.products.map(p=>p.category))];
+    if(!cats.includes(activeCategory)) activeCategory = 'All';
+    // cart me se un items ko hata do jinke product ab exist nahi karte (stale/deleted)
+    const validIds = new Set(shopData.products.map(p=>p.id));
+    const beforeLen = cart.length;
+    cart = cart.filter(c=>validIds.has(c.id));
+    if(cart.length !== beforeLen) saveCart();
+    renderCategoryTabs(); renderProducts(); renderCartBadge();
+    if(document.getElementById('admin-dashboard-overlay') && !document.getElementById('admin-dashboard-overlay').classList.contains('hidden')){
+      renderAdminProducts();
     }
   }
 
@@ -446,7 +481,6 @@
   // ---------- RENDER: category tabs ----------
   function renderCategoryTabs(){
     const cats = ['All', ...new Set(shopData.products.map(p=>p.category))];
-    if(!cats.includes(activeCategory)) activeCategory = 'All';
     const box = document.getElementById('category-tabs');
     box.innerHTML = cats.map(c=>`<button class="cat-tab ${c===activeCategory?'active':''}" data-cat="${c}">${c}</button>`).join('');
     box.querySelectorAll('.cat-tab').forEach(btn=>{
@@ -480,13 +514,13 @@
           <span class="product-desc">${p.desc||''}</span>
           <div class="product-footer">
             <span class="product-price">${money(p.price)}<span>per ${p.unit}</span></span>
-            <button class="add-btn" type="button" data-id="${p.id}" ${!p.inStock?'disabled':''}>+</button>
+            <button class="add-btn" data-id="${p.id}" ${!p.inStock?'disabled':''}>+</button>
           </div>
         </div>
       </div>
     `).join('');
     grid.querySelectorAll('.add-btn').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); addToCart(btn.dataset.id); });
+      btn.addEventListener('click', ()=>{ addToCart(btn.dataset.id); });
     });
   }
 
@@ -633,7 +667,7 @@
       inp.addEventListener('change', async ()=>{
         const newPrice = Number(inp.value)||0;
         const { error } = await sb.from('products').update({price:newPrice}).eq('id', inp.dataset.id);
-        if(error){ console.error(error); toast('Update fail hua'); return; }
+        if(error){ toast('Update fail hua: ' + error.message); return; }
         toast('Rate updated');
         await loadProducts();
       });
@@ -641,7 +675,7 @@
     box.querySelectorAll('.stock-toggle').forEach(chk=>{
       chk.addEventListener('change', async ()=>{
         const { error } = await sb.from('products').update({in_stock: chk.checked}).eq('id', chk.dataset.id);
-        if(error){ console.error(error); toast('Update fail hua'); return; }
+        if(error){ toast('Update fail hua: ' + error.message); return; }
         await loadProducts();
       });
     });
@@ -649,7 +683,7 @@
       btn.addEventListener('click', async ()=>{
         if(!confirm('Delete this product?')) return;
         const { error } = await sb.from('products').delete().eq('id', btn.dataset.id);
-        if(error){ console.error(error); toast('Delete fail hua'); return; }
+        if(error){ toast('Delete fail hua: ' + error.message); return; }
         toast('Product deleted');
         await loadProducts();
       });
@@ -668,13 +702,11 @@
   });
 
   async function uploadImage(file){
-    try{
-      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
-      const { data, error } = await sb.storage.from('product-images').upload(fileName, file);
-      if(error){ console.error(error); toast('Photo upload fail hua: ' + error.message); return ''; }
-      const { data: urlData } = sb.storage.from('product-images').getPublicUrl(fileName);
-      return urlData.publicUrl;
-    }catch(e){ console.error(e); toast('Photo upload me error'); return ''; }
+    const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'')}`;
+    const { data, error } = await sb.storage.from('product-images').upload(fileName, file);
+    if(error){ toast('Photo upload fail hua: ' + error.message); return ''; }
+    const { data: urlData } = sb.storage.from('product-images').getPublicUrl(fileName);
+    return urlData.publicUrl;
   }
 
   document.getElementById('add-product-submit').addEventListener('click', async ()=>{
@@ -695,13 +727,13 @@
       in_stock: true
     });
     btn.textContent = '➕ Add Product'; btn.disabled = false;
-    if(error){ console.error(error); toast('Add fail hua: ' + error.message); return; }
+    if(error){ toast('Add fail hua: ' + error.message); return; }
     document.getElementById('add-name').value=''; document.getElementById('add-desc').value='';
     document.getElementById('add-price').value=''; document.getElementById('add-unit').value='1 Piece';
     document.getElementById('add-img-preview').innerHTML='📷'; pendingImageFile=null;
     document.getElementById('add-product-image').value = '';
-    await loadProducts();
     toast('Product added — live ho gaya sabke liye!');
+    await loadProducts();
   });
 
   // ---------- SHOP SETTINGS ----------
@@ -730,9 +762,9 @@
     const newPass = document.getElementById('set-password').value.trim();
     if(newPass) payload.admin_password = newPass;
     const { error } = await sb.from('shop_settings').update(payload).eq('id', 1);
-    if(error){ console.error(error); toast('Save fail hua: ' + error.message); return; }
-    await loadSettings();
+    if(error){ toast('Save fail hua: ' + error.message); return; }
     toast('Settings saved');
+    await loadSettings();
   });
 
   // ---------- QR CODE ----------
@@ -756,19 +788,30 @@
     if(!sb) return;
     sb.channel('public:products')
       .on('postgres_changes', {event:'*', schema:'public', table:'products'}, ()=>{ loadProducts(); })
-      .subscribe((status)=>{ console.log('products realtime status:', status); });
+      .subscribe();
     sb.channel('public:shop_settings')
       .on('postgres_changes', {event:'*', schema:'public', table:'shop_settings'}, ()=>{ loadSettings(); })
-      .subscribe((status)=>{ console.log('settings realtime status:', status); });
+      .subscribe();
   }
 
   // ---------- INIT ----------
+  function timeout(ms){ return new Promise((_,reject)=> setTimeout(()=>reject(new Error('Timeout')), ms)); }
+
   async function init(){
     renderCartBadge();
     if(sb){
-      await loadSettings();
-      await loadProducts();
-      setupRealtime();
+      try{
+        await Promise.race([
+          (async()=>{ await loadSettings(); await loadProducts(); })(),
+          timeout(12000)
+        ]);
+        setupRealtime();
+      }catch(e){
+        if(e.message === 'Timeout'){
+          showError('Supabase se 12 second me jawab nahi mila — Supabase server slow/down ho sakta hai. status.supabase.com check karein, ya thodi der baad refresh karein.');
+          document.getElementById('product-grid').innerHTML = '<div class="empty-state">Server se connect nahi ho paya — upar wala red message dekhein.</div>';
+        }
+      }
     } else {
       document.getElementById('product-grid').innerHTML = '<div class="empty-state">Supabase URL/Key set nahi hai. File ke top wale script tag me apna SUPABASE_URL aur SUPABASE_ANON_KEY daalein.</div>';
     }
@@ -776,3 +819,6 @@
   }
   init();
 })();
+</script>
+</body>
+</html>
