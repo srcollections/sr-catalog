@@ -83,11 +83,14 @@
   .oos-badge{position:absolute; inset:0; background:rgba(20,20,20,.55); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;}
   .product-body{padding:14px 16px 16px; display:flex; flex-direction:column; gap:6px; flex:1;}
   .product-cat-tag{font-size:10.5px; color:var(--green-dark); font-weight:700; text-transform:uppercase; letter-spacing:.4px;}
-  .product-name{font-size:14.5px; font-weight:700; line-height:1.3;}
+  .product-name{font-size:16.5px; font-weight:800; line-height:1.35; color:#111827; letter-spacing:.1px;}
   .product-desc{font-size:12.5px; color:#7c8496; line-height:1.4; flex:1;}
   .product-footer{display:flex; justify-content:space-between; align-items:center; margin-top:6px;}
   .product-price{font-size:17px; font-weight:800; color:#1a2333;}
   .product-price span{font-size:11px; color:#8b93a6; font-weight:500; display:block;}
+  .mrp-row{display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;}
+  .mrp-strike{font-size:12.5px; color:#9aa2b5; text-decoration:line-through; font-weight:600;}
+  .discount-tag{font-size:11.5px; color:var(--green-dark); font-weight:800;}
   .add-btn{background:var(--green); color:#fff; width:36px; height:36px; border-radius:50%; font-size:16px; display:flex; align-items:center; justify-content:center;}
   .add-btn:disabled{background:#c9cfdb; cursor:not-allowed;}
   .empty-state{grid-column:1/-1; text-align:center; padding:50px 20px; color:#8b93a6;}
@@ -165,18 +168,23 @@
   .gallery-nav-btn.prev{left:12px;} .gallery-nav-btn.next{right:12px;}
   .gallery-close-btn{position:absolute; top:16px; right:16px; background:rgba(255,255,255,.15); color:#fff; width:34px; height:34px; border-radius:50%; font-size:15px;}
   .gallery-info{color:#fff; text-align:center;}
-  .gallery-info h3{font-size:17px; margin-bottom:4px;}
+  .gallery-info h3{font-size:19px; font-weight:800; margin-bottom:4px;}
   .gallery-info p{font-size:13px; color:#aab2c9;}
+  .gallery-product-desc{display:block; margin-top:10px; font-size:12.5px; color:#cfd5e6; line-height:1.6; max-height:160px; overflow-y:auto; text-align:left; white-space:pre-line;}
   .gallery-thumbs{display:flex; gap:8px; overflow-x:auto; max-width:100%; padding-bottom:4px;}
   .gallery-thumbs img{width:52px; height:52px; object-fit:cover; border-radius:8px; opacity:.5; cursor:pointer; border:2px solid transparent; flex-shrink:0;}
   .gallery-thumbs img.active{opacity:1; border-color:var(--green);}
 
   /* Add product: multi-photo picker */
-  .photo-picker-strip{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;}
-  .photo-picker-thumb{position:relative; width:76px; height:76px; border-radius:10px; overflow:hidden; background:#f0f2f8;}
+  .photo-picker-strip{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:6px;}
+  .photo-picker-thumb{position:relative; width:92px; height:92px; border-radius:14px; overflow:hidden; background:#f0f2f8; box-shadow:0 4px 14px rgba(20,30,60,.12); border:1px solid var(--border); transition:transform .15s;}
+  .photo-picker-thumb:hover{transform:translateY(-2px);}
   .photo-picker-thumb img{width:100%; height:100%; object-fit:cover;}
-  .photo-picker-remove{position:absolute; top:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; width:20px; height:20px; border-radius:50%; font-size:11px; display:flex; align-items:center; justify-content:center;}
-  .photo-picker-add{width:76px; height:76px; border-radius:10px; border:1.5px dashed var(--border); display:flex; align-items:center; justify-content:center; font-size:22px; color:#8b93a6; background:#f7f9fc; cursor:pointer;}
+  .photo-picker-remove{position:absolute; top:4px; right:4px; background:rgba(10,15,30,.7); color:#fff; width:22px; height:22px; border-radius:50%; font-size:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.3);}
+  .photo-picker-add{width:92px; height:92px; border-radius:14px; border:2px dashed #12b981; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:26px; color:var(--green-dark); background:linear-gradient(135deg,#eafbf4,#f0faf6); cursor:pointer; transition:transform .15s, box-shadow .15s;}
+  .photo-picker-add:hover{transform:translateY(-2px); box-shadow:0 6px 16px rgba(18,185,129,.25);}
+  .photo-picker-add span{font-size:10.5px; font-weight:700; color:var(--green-dark);}
+  .photo-picker-hint{font-size:12px; color:#8b93a6; margin-bottom:10px;}
 
   /* Admin: manage photos per product */
   .admin-photo-manage-btn{background:none; color:var(--green-dark); font-size:12px; font-weight:700;}
@@ -343,8 +351,9 @@
       <div class="admin-tab-content hidden" id="tab-add-product">
         <div class="form-group">
           <label>Product Photos (multiple select kar sakte ho)</label>
+          <p class="photo-picker-hint">✨ Pehli photo sabse aage dikhegi — product ki sabse achi/clear photo pehle rakhein</p>
           <div class="photo-picker-strip" id="add-photo-strip">
-            <label class="photo-picker-add" id="add-photo-trigger">➕</label>
+            <label class="photo-picker-add" id="add-photo-trigger">📷<span>Add Photo</span></label>
           </div>
           <input type="file" id="add-product-image" accept="image/*" multiple class="hidden">
         </div>
@@ -358,9 +367,10 @@
         </div>
         <div class="form-group"><label>Description</label><textarea id="add-desc" rows="2" placeholder="Short description"></textarea></div>
         <div class="form-row">
-          <div class="form-group"><label>Price (₹)</label><input type="number" id="add-price" min="0" placeholder="e.g. 999"></div>
-          <div class="form-group"><label>Unit</label><input type="text" id="add-unit" placeholder="1 Piece / 1 Pair" value="1 Piece"></div>
+          <div class="form-group"><label>MRP (₹) — optional, discount dikhane ke liye</label><input type="number" id="add-mrp" min="0" placeholder="e.g. 1299"></div>
+          <div class="form-group"><label>Sale Price (₹)</label><input type="number" id="add-price" min="0" placeholder="e.g. 999"></div>
         </div>
+        <div class="form-group"><label>Unit</label><input type="text" id="add-unit" placeholder="1 Piece / 1 Pair" value="1 Piece"></div>
         <button class="btn btn-primary btn-block" id="add-product-submit">➕ Add Product</button>
       </div>
 
@@ -496,7 +506,7 @@
     clearError();
     shopData.products = (data||[]).map(p=>({
       id:p.id, name:p.name, desc:p.description, category:p.category,
-      price:p.price, unit:p.unit, image:p.image, images:p.images||[], inStock:p.in_stock
+      price:p.price, mrp:p.mrp||0, unit:p.unit, image:p.image, images:p.images||[], inStock:p.in_stock
     }));
     // agar currently selected category ab exist nahi karti (e.g. us category ka last product delete ho gaya), All par reset karo
     const cats = ['All', ...new Set(shopData.products.map(p=>p.category))];
@@ -548,6 +558,17 @@
     if(imgs.length){ return `<img src="${imgs[0]}" alt="${p.name}">`; }
     return '🛍️';
   }
+  function priceBlockHTML(p){
+    const hasMrp = p.mrp && p.mrp > p.price;
+    if(!hasMrp){
+      return `<span class="product-price">${money(p.price)}<span>per ${p.unit}</span></span>`;
+    }
+    const pct = Math.round((1 - p.price/p.mrp) * 100);
+    return `<span class="product-price">
+        <div class="mrp-row">${money(p.price)} <span class="mrp-strike">${money(p.mrp)}</span> <span class="discount-tag">${pct}% OFF</span></div>
+        <span>per ${p.unit}</span>
+      </span>`;
+  }
   function renderProducts(){
     const grid = document.getElementById('product-grid');
     const norm = s => (s||'').toString().trim().toLowerCase();
@@ -570,9 +591,8 @@
         <div class="product-body">
           <span class="product-cat-tag">${p.category}</span>
           <span class="product-name">${p.name}</span>
-          <span class="product-desc">${p.desc||''}</span>
           <div class="product-footer">
-            <span class="product-price">${money(p.price)}<span>per ${p.unit}</span></span>
+            ${priceBlockHTML(p)}
             <button class="add-btn" data-id="${p.id}" ${!p.inStock?'disabled':''}>+</button>
           </div>
         </div>
@@ -595,7 +615,12 @@
     galleryImages = getImages(p);
     galleryIndex = 0;
     document.getElementById('gallery-product-name').textContent = p.name;
-    document.getElementById('gallery-product-price').textContent = money(p.price) + ' per ' + p.unit;
+    const hasMrp = p.mrp && p.mrp > p.price;
+    const priceLine = hasMrp
+      ? `${money(p.price)} <span class="mrp-strike">${money(p.mrp)}</span> <span class="discount-tag">${Math.round((1-p.price/p.mrp)*100)}% OFF</span>`
+      : money(p.price);
+    document.getElementById('gallery-product-price').innerHTML = priceLine + ' per ' + p.unit +
+      (p.desc ? `<br><span class="gallery-product-desc">${p.desc}</span>` : '');
     renderGalleryMain();
     renderGalleryThumbs();
     document.getElementById('gallery-overlay').classList.remove('hidden');
@@ -762,7 +787,8 @@
           <span class="admin-product-cat-tag">${p.category} · ${p.unit}</span>
           <button class="admin-photo-manage-btn manage-photos-btn" data-id="${p.id}">📷 Photos (${imgCount})</button>
         </div>
-        <input type="number" class="admin-rate-input" data-id="${p.id}" value="${p.price}" min="0">
+        <input type="number" class="admin-mrp-input" data-id="${p.id}" value="${p.mrp||''}" min="0" placeholder="MRP" title="MRP (optional)" style="width:80px;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;">
+        <input type="number" class="admin-rate-input" data-id="${p.id}" value="${p.price}" min="0" title="Sale Price">
         <label class="toggle-switch">
           <input type="checkbox" class="stock-toggle" data-id="${p.id}" ${p.inStock?'checked':''}>
           <span class="toggle-slider"></span>
@@ -776,6 +802,15 @@
         const { error } = await sb.from('products').update({price:newPrice}).eq('id', inp.dataset.id);
         if(error){ toast('Update fail hua: ' + error.message); return; }
         toast('Rate updated');
+        await loadProducts();
+      });
+    });
+    box.querySelectorAll('.admin-mrp-input').forEach(inp=>{
+      inp.addEventListener('change', async ()=>{
+        const newMrp = Number(inp.value)||0;
+        const { error } = await sb.from('products').update({mrp:newMrp}).eq('id', inp.dataset.id);
+        if(error){ toast('Update fail hua: ' + error.message); return; }
+        toast('MRP updated');
         await loadProducts();
       });
     });
@@ -855,7 +890,7 @@
         <button class="photo-picker-remove" data-i="${i}">✕</button>
       </div>
     `).join('');
-    strip.innerHTML = thumbs + '<label class="photo-picker-add" id="add-photo-trigger">➕</label>';
+    strip.innerHTML = thumbs + '<label class="photo-picker-add" id="add-photo-trigger">📷<span>Add Photo</span></label>';
     document.getElementById('add-photo-trigger').addEventListener('click', ()=>{
       document.getElementById('add-product-image').click();
     });
@@ -909,6 +944,7 @@
       description: document.getElementById('add-desc').value.trim(),
       category: document.getElementById('add-category').value,
       price,
+      mrp: Number(document.getElementById('add-mrp').value)||0,
       unit: document.getElementById('add-unit').value.trim() || '1 Piece',
       image: imageUrls[0] || '',
       images: imageUrls,
@@ -917,7 +953,7 @@
     btn.textContent = '➕ Add Product'; btn.disabled = false;
     if(error){ toast('Add fail hua: ' + error.message); return; }
     document.getElementById('add-name').value=''; document.getElementById('add-desc').value='';
-    document.getElementById('add-price').value=''; document.getElementById('add-unit').value='1 Piece';
+    document.getElementById('add-price').value=''; document.getElementById('add-mrp').value=''; document.getElementById('add-unit').value='1 Piece';
     pendingImageFiles = []; renderAddPhotoStrip();
     toast('Product added — live ho gaya sabke liye!');
     await loadProducts();
